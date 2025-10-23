@@ -1,267 +1,257 @@
-import React, { useState } from "react";
-import { motion } from "framer-motion";
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pokémon Battle with Sprites</title>
+<style>
+  body {
+    font-family: 'Poppins', sans-serif;
+    background: linear-gradient(to bottom, #9cd2f9, #eaf6ff);
+    text-align: center;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+  }
 
-const MAX_HP = 150;
-const DAMAGE_SCALE = MAX_HP / 100;
+  .battlefield {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    height: 100vh;
+    padding: 20px;
+  }
 
-const TEAMS = {
-  PENGUIN: "penguin",
-  BEAR: "bear",
-} as const;
+  .creature {
+    position: relative;
+    text-align: center;
+    width: 300px;
+    background: rgba(255,255,255,0.9);
+    border-radius: 15px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.25);
+    padding: 10px;
+  }
 
-type Team = typeof TEAMS[keyof typeof TEAMS];
+  .hp-bar {
+    height: 20px;
+    width: 100%;
+    background: #ddd;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-top: 5px;
+  }
 
-type Move = {
-  name: string;
-  power: number;
-  element: string;
-  symbol: string;
-};
+  .hp {
+    height: 100%;
+    background: linear-gradient(to right, #4CAF50, #2ecc71);
+    width: 100%;
+    transition: width 0.5s;
+  }
 
-type Unit = {
-  id: string;
-  team: Team;
-  hp: number;
-  name: string;
-  moves: Move[];
-};
+  .sprites {
+    position: relative;
+    width: 100%;
+    height: 250px;
+  }
 
-const teamEmoji = (team: Team) => (team === TEAMS.PENGUIN ? "🐧" : "🐻‍❄️");
+  .sprite {
+    position: absolute;
+    width: 180px;
+    transition: transform 0.3s, opacity 0.3s;
+  }
 
-const CHARACTERS: Record<Team, Unit> = {
-  penguin: {
-    id: "P1",
-    team: TEAMS.PENGUIN,
-    hp: MAX_HP,
-    name: "Penguin",
-    moves: [
-      { name: "Frost Peck", power: 6 * DAMAGE_SCALE, element: "Ice", symbol: "❄️" },
-      { name: "Aqua Dash", power: 8 * DAMAGE_SCALE, element: "Water", symbol: "💧" },
-      { name: "Chill Heal", power: -5 * DAMAGE_SCALE, element: "Heal", symbol: "✨" },
-      { name: "Wind Flap", power: 6 * DAMAGE_SCALE, element: "Air", symbol: "💨" },
-    ],
-  },
-  bear: {
-    id: "B1",
-    team: TEAMS.BEAR,
-    hp: MAX_HP,
-    name: "Polar Bear",
-    moves: [
-      { name: "Claw Swipe", power: 7 * DAMAGE_SCALE, element: "Earth", symbol: "🌍" },
-      { name: "Blizzard Roar", power: 8 * DAMAGE_SCALE, element: "Ice", symbol: "❄️" },
-      { name: "Hibernate", power: -6 * DAMAGE_SCALE, element: "Heal", symbol: "💤" },
-      { name: "Tundra Smash", power: 9 * DAMAGE_SCALE, element: "Rock", symbol: "🪨" },
-    ],
-  },
-};
+  .player-sprite {
+    bottom: 0;
+    left: 50px;
+  }
 
-export default function PenguinsVsPolarBears() {
-  const [player1, setPlayer1] = useState<Unit | null>(null);
-  const [player2, setPlayer2] = useState<Unit | null>(null);
-  const [turn, setTurn] = useState<Team>(TEAMS.PENGUIN);
-  const [history, setHistory] = useState<string[]>([]);
-  const [battleStarted, setBattleStarted] = useState(false);
+  .enemy-sprite {
+    top: 0;
+    right: 50px;
+    transform: scaleX(-1);
+  }
 
-  const bothSelected = player1 && player2;
+  .battle-log {
+    background: #fff;
+    padding: 15px;
+    width: 420px;
+    height: 120px;
+    overflow-y: auto;
+    border-radius: 10px;
+    box-shadow: 0 0 8px rgba(0,0,0,0.2);
+  }
 
-  const elementAdvantages: Record<string, string> = {
-    Ice: "Water",
-    Water: "Rock",
-    Earth: "Air",
-    Rock: "Ice",
+  .moves button {
+    margin: 10px;
+    padding: 10px 15px;
+    border: none;
+    background: #007bff;
+    color: white;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: 0.2s;
+  }
+
+  .moves button:hover {
+    background: #0056b3;
+  }
+
+  .flash {
+    animation: flash 0.2s ease-in-out 2;
+  }
+
+  .shake {
+    animation: shake 0.3s ease-in-out 3;
+  }
+
+  @keyframes flash {
+    0%, 100% { filter: brightness(1); }
+    50% { filter: brightness(2); }
+  }
+
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-10px); }
+    75% { transform: translateX(10px); }
+  }
+</style>
+</head>
+<body>
+
+<div class="battlefield">
+  <div id="enemy" class="creature">
+    <h2>Bearon (Ice)</h2>
+    <div class="hp-bar"><div class="hp" id="enemy-hp"></div></div>
+    <p id="enemy-hp-text">HP: 100 / 100</p>
+  </div>
+
+  <div class="sprites">
+    <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/38.png" class="sprite enemy-sprite" id="enemy-sprite" alt="Bearon">
+    <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/393.png" class="sprite player-sprite" id="player-sprite" alt="Penguinmon">
+  </div>
+
+  <div id="player" class="creature">
+    <h2>Penguinmon (Water)</h2>
+    <div class="hp-bar"><div class="hp" id="player-hp"></div></div>
+    <p id="player-hp-text">HP: 100 / 100</p>
+  </div>
+
+  <div class="moves">
+    <button onclick="playerAttack('Bubble Jet', 'Water')">Bubble Jet</button>
+    <button onclick="playerAttack('Ice Punch', 'Ice')">Ice Punch</button>
+    <button onclick="playerAttack('Aqua Heal', 'Heal')">Aqua Heal</button>
+  </div>
+
+  <div class="battle-log" id="log"></div>
+</div>
+
+<script>
+  const player = { name: "Penguinmon", type: "Water", hp: 100, maxHp: 100, attack: 25, defense: 10 };
+  const enemy = { name: "Bearon", type: "Ice", hp: 100, maxHp: 100, attack: 20, defense: 12 };
+
+  const typeChart = {
+    Water:   { Fire: 2.0, Ice: 1.2, Grass: 0.5, Water: 1.0 },
+    Fire:    { Grass: 2.0, Water: 0.5, Ice: 1.5, Fire: 1.0 },
+    Ice:     { Water: 0.8, Grass: 2.0, Fire: 0.5, Ice: 1.0 },
+    Grass:   { Water: 2.0, Fire: 0.5, Ice: 1.0, Grass: 1.0 }
   };
 
-  const reactionChart: Record<string, Record<string, string>> = {
-    Ice: { Water: "Freeze Reaction - Extra 1 dmg!", Air: "Frost Storm - Double hit!" },
-    Water: { Rock: "Erosion - +2 dmg!" },
-    Earth: { Air: "Dust Burst - +1 dmg!" },
-    Rock: { Ice: "Crack Chill - Defense break!" },
-  };
-
-  function getReaction(move1: string, move2: string) {
-    if (reactionChart[move1]?.[move2]) return reactionChart[move1][move2];
-    if (reactionChart[move2]?.[move1]) return reactionChart[move2][move1];
-    return null;
+  function log(message) {
+    const logBox = document.getElementById('log');
+    logBox.innerHTML += message + "<br>";
+    logBox.scrollTop = logBox.scrollHeight;
   }
 
-  function performMove(move: Move) {
-    if (!player1 || !player2) return;
-    const isCrit = Math.random() < 0.2;
-    let damage = isCrit ? move.power * 2 : move.power;
+  function updateHpBars() {
+    document.getElementById('player-hp').style.width = (player.hp / player.maxHp * 100) + "%";
+    document.getElementById('enemy-hp').style.width = (enemy.hp / enemy.maxHp * 100) + "%";
+    document.getElementById('player-hp-text').innerText = `HP: ${player.hp} / ${player.maxHp}`;
+    document.getElementById('enemy-hp-text').innerText = `HP: ${enemy.hp} / ${enemy.maxHp}`;
+  }
 
-    const attacker = turn === TEAMS.PENGUIN ? { ...player1 } : { ...player2 };
-    const defender = turn === TEAMS.PENGUIN ? { ...player2 } : { ...player1 };
+  function getTypeMultiplier(attackerType, defenderType) {
+    return typeChart[attackerType]?.[defenderType] || 1.0;
+  }
 
-    let log = `${attacker.name} ${move.symbol} used ${move.name}!`;
+  function damageCalc(attacker, defender, movePower, moveType) {
+    const rand = 0.8 + Math.random() * 0.4;
+    const typeMultiplier = getTypeMultiplier(moveType, defender.type);
+    const baseDamage = movePower * (attacker.attack / defender.defense);
+    const totalDamage = Math.floor(baseDamage * typeMultiplier * rand);
+    return { totalDamage: Math.max(5, totalDamage), typeMultiplier };
+  }
 
-    if (move.power > 0) {
-      const randomDefMove = defender.moves[Math.floor(Math.random() * defender.moves.length)];
+  function animateAttack(attackerSpriteId, defenderSpriteId) {
+    const attacker = document.getElementById(attackerSpriteId);
+    const defender = document.getElementById(defenderSpriteId);
 
-      if (elementAdvantages[move.element] === randomDefMove.element) {
-        damage *= 1.5;
-        log += ` 🌟 Elemental Advantage!`;
-      }
+    attacker.classList.add('flash');
+    defender.classList.add('shake');
 
-      defender.hp = Math.max(0, defender.hp - Math.round(damage));
-      if (isCrit) log += ` 💥 Critical Hit! (${Math.round(damage)} dmg)`;
-    } else {
-      attacker.hp = Math.min(MAX_HP, attacker.hp - Math.round(move.power));
-      log += ` 🧊 Healed ${-Math.round(move.power)} HP!`;
+    setTimeout(() => attacker.classList.remove('flash'), 600);
+    setTimeout(() => defender.classList.remove('shake'), 600);
+  }
+
+  function playerAttack(move, moveType) {
+    if (player.hp <= 0 || enemy.hp <= 0) return;
+
+    if (moveType === "Heal") {
+      const heal = 20;
+      player.hp = Math.min(player.maxHp, player.hp + heal);
+      log(`💧 Penguinmon used Aqua Heal! Restored ${heal} HP!`);
+      updateHpBars();
+      return setTimeout(enemyTurn, 1000);
     }
 
-    const reaction = getReaction(move.element, defender.moves[Math.floor(Math.random() * defender.moves.length)].element);
-    if (reaction) {
-      log += ` ⚗️ ${reaction}`;
-      defender.hp = Math.max(0, defender.hp - Math.round(2 * DAMAGE_SCALE));
-    }
+    const movePower = moveType === "Water" ? 22 : 26;
+    const { totalDamage, typeMultiplier } = damageCalc(player, enemy, movePower, moveType);
 
-    setHistory(h => [log, ...h]);
-    if (turn === TEAMS.PENGUIN) {
-      setPlayer1(attacker);
-      setPlayer2(defender);
-    } else {
-      setPlayer2(attacker);
-      setPlayer1(defender);
-    }
-    setTurn(turn === TEAMS.PENGUIN ? TEAMS.BEAR : TEAMS.PENGUIN);
+    animateAttack('player-sprite', 'enemy-sprite');
+
+    enemy.hp = Math.max(0, enemy.hp - totalDamage);
+    let typeMsg = "";
+    if (typeMultiplier > 1.2) typeMsg = "It's super effective!";
+    else if (typeMultiplier < 1.0) typeMsg = "It's not very effective...";
+    log(`🐧 Penguinmon used ${move}! It dealt ${totalDamage} damage! ${typeMsg}`);
+
+    updateHpBars();
+    checkBattleEnd();
+
+    if (enemy.hp > 0) setTimeout(enemyTurn, 1200);
   }
 
-  // Updated winner logic: Determine based on actual remaining HP instead of fixed teams
-  const winner = player1 && player2 && (player1.hp <= 0 || player2.hp <= 0)
-    ? player1.hp <= 0 && player2.hp > 0
-      ? player2.name
-      : player2.hp <= 0 && player1.hp > 0
-      ? player1.name
-      : null
-    : null;
+  function enemyTurn() {
+    if (enemy.hp <= 0) return;
 
-  function reset() {
-    setPlayer1(null);
-    setPlayer2(null);
-    setTurn(TEAMS.PENGUIN);
-    setHistory([]);
-    setBattleStarted(false);
+    const moves = [
+      { name: "Frost Bite", power: 22, type: "Ice" },
+      { name: "Blizzard Roar", power: 28, type: "Ice" }
+    ];
+    const move = moves[Math.floor(Math.random() * moves.length)];
+    const { totalDamage, typeMultiplier } = damageCalc(enemy, player, move.power, move.type);
+
+    animateAttack('enemy-sprite', 'player-sprite');
+
+    player.hp = Math.max(0, player.hp - totalDamage);
+    let typeMsg = "";
+    if (typeMultiplier > 1.2) typeMsg = "It's super effective!";
+    else if (typeMultiplier < 1.0) typeMsg = "It's not very effective...";
+    log(`🐻 Bearon used ${move.name}! It dealt ${totalDamage} damage! ${typeMsg}`);
+
+    updateHpBars();
+    checkBattleEnd();
   }
 
-  if (!bothSelected || !battleStarted) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-blue-50 to-sky-100 p-6 flex flex-col items-center justify-center">
-        <h1 className="text-3xl font-bold mb-4">Choose Characters</h1>
-        {!player1 ? (
-          <div className="flex gap-6">
-            {[TEAMS.PENGUIN, TEAMS.BEAR].map(team => (
-              <motion.button
-                key={team}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setPlayer1({ ...CHARACTERS[team] })}
-                className="bg-white rounded-3xl p-6 shadow hover:shadow-md text-center w-48"
-              >
-                <div className="text-6xl mb-2">{teamEmoji(team)}</div>
-                <p className="font-semibold text-lg">{team === TEAMS.PENGUIN ? "Penguin" : "Polar Bear"}</p>
-              </motion.button>
-            ))}
-          </div>
-        ) : !player2 ? (
-          <div className="flex flex-col items-center">
-            <h2 className="text-xl mb-3">Player 2, choose your character</h2>
-            <div className="flex gap-6">
-              {[TEAMS.PENGUIN, TEAMS.BEAR].map(team => (
-                <motion.button
-                  key={team}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setPlayer2({ ...CHARACTERS[team] })}
-                  className="bg-white rounded-3xl p-6 shadow hover:shadow-md text-center w-48"
-                >
-                  <div className="text-6xl mb-2">{teamEmoji(team)}</div>
-                  <p className="font-semibold text-lg">{team === TEAMS.PENGUIN ? "Penguin" : "Polar Bear"}</p>
-                </motion.button>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setBattleStarted(true)}
-            className="mt-6 px-4 py-2 bg-green-500 text-white rounded-xl shadow hover:bg-green-600"
-          >
-            Start Battle
-          </motion.button>
-        )}
-      </div>
-    );
+  function checkBattleEnd() {
+    if (enemy.hp <= 0) log("🎉 You win! Bearon fainted!");
+    else if (player.hp <= 0) log("💀 Penguinmon fainted! You lose!");
   }
 
-  return (
-    <div className="min-h-screen w-full bg-gradient-to-b from-blue-50 to-sky-100 p-4 md:p-8">
-      <div className="mx-auto max-w-4xl grid grid-cols-1 gap-6">
-        <header className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Penguins 🐧 vs Polar Bears 🐻‍❄️</h1>
-            <p className="text-sm md:text-base text-slate-600">Turn-based elemental duel ⚗️</p>
-          </div>
-          <button onClick={reset} className="px-3 py-2 rounded-2xl shadow bg-white hover:shadow-md">New Game</button>
-        </header>
+  updateHpBars();
+  log("A wild Bearon appeared!");
+</script>
 
-        <div className="bg-white rounded-3xl shadow-lg p-6 grid grid-rows-2 gap-6">
-          <div className="flex justify-between items-center">
-            <div className="flex flex-col items-start">
-              <span className="font-semibold">{player2.name} {teamEmoji(player2.team)}</span>
-              <div className="w-40 h-3 bg-slate-200 rounded-full overflow-hidden">
-                <motion.div className="h-full bg-red-500" animate={{ width: `${(player2.hp / MAX_HP) * 100}%` }} />
-              </div>
-              <span className="text-xs text-slate-500">HP: {player2.hp}/{MAX_HP}</span>
-            </div>
-            <motion.div className="text-6xl">{teamEmoji(player2.team)}</motion.div>
-          </div>
-
-          <div className="flex justify-between items-center">
-            <motion.div className="text-6xl">{teamEmoji(player1.team)}</motion.div>
-            <div className="flex flex-col items-end">
-              <span className="font-semibold">{player1.name} {teamEmoji(player1.team)}</span>
-              <div className="w-40 h-3 bg-slate-200 rounded-full overflow-hidden">
-                <motion.div className="h-full bg-red-500" animate={{ width: `${(player1.hp / MAX_HP) * 100}%` }} />
-              </div>
-              <span className="text-xs text-slate-500">HP: {player1.hp}/{MAX_HP}</span>
-            </div>
-          </div>
-        </div>
-
-        {!winner ? (
-          <div className="bg-white rounded-3xl shadow-lg p-6">
-            <h3 className="font-semibold mb-2">{turn === TEAMS.PENGUIN ? "Penguin" : "Polar Bear"}'s Turn {teamEmoji(turn)}</h3>
-            <div className="grid grid-cols-2 gap-2">
-              {(turn === TEAMS.PENGUIN ? player1.moves : player2.moves).map(move => (
-                <motion.button
-                  key={move.name}
-                  onClick={() => performMove(move)}
-                  whileTap={{ scale: 0.95 }}
-                  className="px-3 py-2 rounded-xl shadow bg-blue-100 hover:bg-blue-200 text-sm font-medium flex items-center justify-between"
-                >
-                  <span>{move.symbol}</span>
-                  <span>{move.name}</span>
-                </motion.button>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div className="bg-yellow-200 text-yellow-900 rounded-3xl shadow-lg p-6 text-center font-bold">
-            🏆 {winner} wins!
-          </div>
-        )}
-
-        <div className="bg-white rounded-2xl shadow p-4">
-          <h3 className="font-semibold mb-2">Battle Log</h3>
-          <div className="h-48 overflow-auto space-y-2">
-            {history.length === 0 ? (
-              <p className="text-sm text-slate-500">No actions yet. Make the first move!</p>
-            ) : (
-              history.map((h, i) => (
-                <div key={i} className="text-sm p-2 rounded-lg bg-slate-50 border border-slate-100">{h}</div>
-              ))
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+</body>
+</html>
